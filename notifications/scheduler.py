@@ -284,7 +284,6 @@ async def build_message(user: Dict[str, Any], notif_data: Dict[str, Any]) -> str
 # Called from handlers/broadcast.py
 # Uses get_all_enabled_users() from notifications.db — no phantom imports
 # ============================================================================
-
 async def send_emergency_broadcast(
     app,
     message: str,
@@ -295,9 +294,11 @@ async def send_emergency_broadcast(
         bot = app.bot
 
         if all_users:
-            rows = get_all_enabled_users()
-            # normalize sqlite3.Row → dict for send_notification_with_retry
-            users = [{"user_id": row["user_id"], "delivery": "private"} for row in rows]
+            from models.db import get_connection
+            conn = get_connection()
+            rows = conn.execute("SELECT user_id FROM users").fetchall()
+            conn.close()
+            users = [{"user_id": row[0], "delivery": "private"} for row in rows]
         elif user_ids:
             users = [{"user_id": uid, "delivery": "private"} for uid in user_ids]
         else:
@@ -326,4 +327,5 @@ async def send_emergency_broadcast(
     except Exception as e:
         print(f"[Broadcast] Error: {e}")
         return {"sent": 0, "failed": 0, "blocked": 0, "error": str(e)}
-        
+
+    
